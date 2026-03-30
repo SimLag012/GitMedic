@@ -1,0 +1,19 @@
+{
+ "agent_name": "GitFixAgent",
+ "operator_wallet": "0xOperator",
+ "erc8004_identity": "0xAgent",
+ "supported_tools": [
+  "github_api",
+  "git",
+  "pytest",
+  "gemini_api"
+ ],
+ "task_categories": [
+  "bug_fixing",
+  "code_generation"
+ ],
+ "compute_constraints": {
+  "max_runtime_minutes": 10,
+  "max_llm_calls": 10
+ }
+}

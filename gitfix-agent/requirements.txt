@@ -1,0 +1,9 @@
+requests
+PyGithub
+gitpython
+pytest
+web3
+python-dotenv
+google-generativeai
+ollama
+rich
