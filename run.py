@@ -20,18 +20,24 @@ def main():
     # Logic for cleaning local data
     if args.clean:
         import shutil
+        import stat
         base_dir = os.path.dirname(os.path.abspath(__file__))
         repos_dir = os.path.join(base_dir, "repos")
         logs_dir = os.path.join(base_dir, "logs")
         
+        def remove_readonly(func, path, excinfo):
+            """Handler for shutil.rmtree on Windows for read-only files (like .git/objects)."""
+            os.chmod(path, stat.S_IWRITE)
+            func(path)
+
         if os.path.exists(repos_dir):
             rprint(f"[bold yellow]Deleting {repos_dir}...[/bold yellow]")
-            shutil.rmtree(repos_dir)
+            shutil.rmtree(repos_dir, onerror=remove_readonly)
             os.makedirs(repos_dir)
             
         if os.path.exists(logs_dir):
             rprint(f"[bold yellow]Deleting {logs_dir}...[/bold yellow]")
-            shutil.rmtree(logs_dir)
+            shutil.rmtree(logs_dir, onerror=remove_readonly)
             os.makedirs(logs_dir)
             
         rprint("[bold green]Local data cleaned successfully.[/bold green]")
