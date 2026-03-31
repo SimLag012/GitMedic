@@ -95,9 +95,12 @@ class GitFixOrchestrator:
                 try: os.remove(cache_file)
                 except: pass
                 
-            success = self._run_once(target_url=target_url, discovery_mode=True)
-            if success:
+            status = self._run_once(target_url=target_url, discovery_mode=True)
+            if status == True:
                 rprint("[bold green] GitMedic successfully completed a fix. Exiting loop.[/bold green]")
+                break
+            elif status == "FATAL":
+                rprint("[bold red] Stopping GitMedic due to a critical configuration error.[/bold red]")
                 break
             
             rprint("[bold yellow] Cycle failed (issue might be already fixed or invalid). Retrying with a new bug...[/bold yellow]")
@@ -128,6 +131,12 @@ class GitFixOrchestrator:
         else:
             rprint(f"[bold green]LLM READY:[/bold green] Using Gemini API provider.")
         
+        # Check for mandatory GITHUB_TOKEN before discovery
+        if not os.getenv("GITHUB_TOKEN"):
+            rprint("[bold red]CRITICAL ERROR:[/bold red] GITHUB_TOKEN not found in environment variables.")
+            rprint("[yellow]Please run 'gitmedic --config' to set up your GitHub Personal Access Token.[/yellow]")
+            return "FATAL"
+
         # 1. DISCOVERY
         if target_url:
             issue = self.discovery_agent.search_specific_repo_bugs(target_url)
