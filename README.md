@@ -7,6 +7,7 @@ GitMedic is a professional-grade autonomous agent system designed to monitor, an
 The system operates as a self-healing development loop, identifying high-priority issues and executing a multi-stage resolution process. It combines advanced LLM reasoning with deterministic code validation to provide stable, production-ready fixes.
 
 ### Key Capabilities
+
 - **Autonomous Discovery**: Automatically scans GitHub for viable bug-fixing opportunities based on complexity and priority.
 - **Swarm Planning**: Generates and evaluates multiple resolution strategies in parallel to select the most efficient path.
 - **Infinite Resilience Loop**: Continues to refine and correct patches until they pass all validation checks, learning from each failure.
@@ -30,11 +31,13 @@ GitMedic divides responsibilities among specialized agents to maximize reliabili
 ## Installation
 
 ### 1. Prerequisites
+
 - Python 3.9 or higher
 - Git installed on your system
 - A GitHub Personal Access Token (PAT) with `repo` scope
 
 ### 2. Setup
+
 Clone the repository and install the package using `pip`:
 
 ```bash
@@ -44,6 +47,7 @@ pip install .
 ```
 
 For development and real-time updates, install in editable mode:
+
 ```bash
 pip install -e .
 ```
@@ -59,6 +63,7 @@ gitmedic --config
 ```
 
 This wizard will prompt you for:
+
 - **GitHub Token**: For repository access and PR creation.
 - **LLM Provider**: Choose between **Gemini** (Cloud) or **Ollama** (Local).
 - **Blockchain Identity**: (Optional) Register your agent's identity on-chain via ERC-8004.
@@ -70,31 +75,41 @@ All settings are stored securely in `~/.gitmedic/.env`.
 ## Usage
 
 ### 1. Discovery Mode
+
 Automatically search for and attempt to fix a random high-priority bug on GitHub:
+
 ```bash
 gitmedic -r
 ```
 
 ### 2. Targeted Resolution
+
 Fix a specific repository or a particular GitHub issue by providing the URL:
+
 ```bash
 gitmedic https://github.com/owner/repository/issues/123
 ```
 
 ### 3. Provider selection (CLI Override)
+
 You can override your default LLM provider directly from the command line:
+
 ```bash
 gitmedic -r --provider ollama
 gitmedic -r --provider gemini
 ```
 
 ### 4. Pull Request Controls
+
 By default, GitMedic creates a Pull Request only after a successful local verification. You can override this behavior:
+
 - **Test Mode (No PR)**: `gitmedic -r --no-pull`
 - **Force PR**: `gitmedic -r --pull`
 
 ### 5. Cleaning Local Data
+
 To delete all locally cloned repositories and log files to free up space:
+
 ```bash
 gitmedic --clean
 ```
@@ -104,18 +119,23 @@ gitmedic --clean
 ## Advanced Systems
 
 ### Search/Replace Matching
+
 To avoid the brittleness of line numbers, GitMedic uses exact block matching. If the LLM produces a slight mismatch in whitespace, the system employs a weighted fuzzy-matching algorithm to ensure the patch is applied correctly.
 
 ### Blockchain Identity (ERC-8004)
+
 GitMedic supports decentralized agent identity. When enabled, the agent registers its cryptographic identity on-chain, allowing for secure verification of contributions in multi-agent environments.
 
 ### Infinite Resilience Loop
+
 If a fix fails verification, the **Critic Agent** analyzes the error output and provides a technical post-mortem. The **Developer Agent** then uses this feedback to generate a refined attempt. This loop continues (up to 15 internal cycles) until a successful resolution is achieved.
 
 ---
 
 ## Technical Documentation
-For a deep dive into the internal mechanics, please refer to the [TECHNICAL_OVERVIEW.md](gitfix-agent/TECHNICAL_OVERVIEW.md).
+
+For a deep dive into the internal mechanics, please refer to the [TECHNICAL_OVERVIEW.md](TECHNICAL_OVERVIEW.md).
 
 ---
-*Developed by the GitMedic AI Team. Professional, Autonomous, Resilient.*
+
+_Developed by the GitMedic AI Team. Professional, Autonomous, Resilient._
