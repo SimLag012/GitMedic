@@ -1,6 +1,6 @@
 # Setup Guide: Configuration
 
-To operate the **GitFix Agent**, appropriate configuration is required. You no longer need to manually edit any files. 
+To operate the **GitMedic Agent** on Windows or Linux, appropriate configuration is required. You no longer need to manually edit any files. 
 
 ### First-Time Interactive Wizard
 The very first time you execute the `gitmedic` command in your terminal, an interactive setup wizard will launch. It will prompt you for the following variables:

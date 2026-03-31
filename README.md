@@ -31,9 +31,8 @@ GitMedic divides responsibilities among specialized agents to maximize reliabili
 ## Installation
 
 ### 1. Prerequisites
-
-- Python 3.9 or higher
-- Git installed on your system
+- Python 3.9 or higher (Ensure `pip` and `venv` are installed)
+- **Git** installed on your system (`sudo apt install git` on Linux or Git for Windows)
 - A GitHub Personal Access Token (PAT) with `repo` scope
 
 ### 2. Setup
