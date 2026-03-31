@@ -41,8 +41,8 @@ GitMedic divides responsibilities among specialized agents to maximize reliabili
 Clone the repository and install the package using `pip`:
 
 ```bash
-git clone https://github.com/your-username/GitMedic.git
-cd GitMedic/gitfix-agent
+git clone https://github.com/SimLag012/GitMedic.git
+cd GitMedic
 pip install .
 ```
 
