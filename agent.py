@@ -22,7 +22,7 @@ console = Console()
 LOG_FILE = "logs/agent_log.json"
 MAX_GITHUB_REQS = 30
 
-class GitFixOrchestrator:
+class GitMedicOrchestrator:
     def __init__(self):
         self.logs = []
         self.req_count = 0
@@ -68,7 +68,7 @@ class GitFixOrchestrator:
         import time
         elapsed = time.time() - self.metrics["start_time"]
         
-        table = Table(title="[bold blue]GITFIX SESSION DASHBOARD[/bold blue]", box=None)
+        table = Table(title="[bold blue]GITMEDIC SESSION DASHBOARD[/bold blue]", box=None)
         table.add_column("Metric", style="cyan")
         table.add_column("Value", style="magenta")
         
@@ -111,7 +111,7 @@ class GitFixOrchestrator:
         from llm import get_provider, check_ollama, start_ollama
         provider = get_provider()
         
-        rprint("\n[bold cyan]=== GitFix Multi-Agent System Started ===[/bold cyan]\n")
+        rprint("\n[bold cyan]=== GitMedic Multi-Agent System Started ===[/bold cyan]\n")
         
         # Initial LLM status check
         if provider == "ollama":

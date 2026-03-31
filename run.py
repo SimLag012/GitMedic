@@ -1,6 +1,6 @@
 import argparse
 from blockchain import register_agent_identity
-from agent import GitFixOrchestrator
+from agent import GitMedicOrchestrator
 import os
 
 from rich import print as rprint
@@ -69,13 +69,14 @@ def main():
         return
 
     rprint("[bold cyan]========================================[/bold cyan]")
-    rprint("[bold white]    GitFix Multi-Agent System 1.0       [/bold white]")
+    rprint("[bold white]    GitMedic Multi-Agent System 1.0     [/bold white]")
+    rprint("[bold white]       By Simone Laganà                 [/bold white]")
     rprint("[bold cyan]========================================[/bold cyan]\n")
     # One-time registration of the ERC-8004 identity
     register_agent_identity()
     
     # Initialize the Orchestrator
-    agent = GitFixOrchestrator()
+    agent = GitMedicOrchestrator()
     
     if args.repo_link:
         rprint(f"[bold green]Starting GitMedic for specific target:[/bold green] {args.repo_link}")

@@ -138,4 +138,4 @@ For a deep dive into the internal mechanics, please refer to the [TECHNICAL_OVER
 
 ---
 
-_Developed by the GitMedic AI Team. Professional, Autonomous, Resilient._
+_Developed by Simone Laganà. Version 1.0 GitMedic. Professional, Autonomous, Resilient._

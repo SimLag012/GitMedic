@@ -1,7 +1,7 @@
-# GitFix Agent: Multi-Agent System Technical Documentation
+# GitMedic: Multi-Agent System Technical Documentation
 
 ## 1. Overview
-The GitFix Agent is an autonomous artificial intelligence system designed for the continuous monitoring, analysis, and resolution of bugs within GitHub repositories. Diverging from linear automation scripts, GitFix employs a multi-agent architecture coordinated by a central Orchestrator, ensuring high resiliency, precision, and operational safety.
+The GitMedic Agent is an autonomous artificial intelligence system designed for the continuous monitoring, analysis, and resolution of bugs within GitHub repositories. Diverging from linear automation scripts, GitMedic employs a multi-agent architecture coordinated by a central Orchestrator, ensuring high resiliency, precision, and operational safety.
 
 ## 2. Multi-Agent Architecture
 The system is modularized into specialized agents, each possessing distinct atomic responsibilities:
@@ -74,4 +74,4 @@ The Orchestrator operates as a fully state-aware system:
 - **Comprehensive Traceability**: All deterministic decisions are logged in `logs/agent_log.json`, including granular failure analysis.
 
 ---
-*Documentation updated by the GitMedic Agent Team - Version 2.0 Robustness Build.*
+*Documentation updated by Simone Laganà - Version 1.0 GitMedic Build.*

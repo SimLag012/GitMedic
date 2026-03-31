@@ -8,7 +8,9 @@ def read_requirements():
 
 setup(
     name='gitmedic',
-    version='1.0.0',
+    version='1.0',
+    author='Simone Laganà',
+    author_email='simone.lagana@example.com', # Placeholder or your real email
     packages=find_packages(),
     py_modules=['run', 'agent', 'llm', 'tester', 'blockchain', 'github_api', 'config'],
     install_requires=read_requirements(),
