@@ -98,8 +98,9 @@ class DiscoveryAgent:
                 if len(parts) >= 4 and parts[2] == "issues":
                     issue_number = int(parts[3])
         
+        print(f"[DiscoveryAgent] DEBUG: repo_name={repo_name}, issue_number={issue_number}")
         try:
-            repo = self.g.get_repo(repo_name)
+            repo = self.g.get_repo(repo_name.strip())
             
             if issue_number:
                 issue_obj = repo.get_issue(issue_number)
