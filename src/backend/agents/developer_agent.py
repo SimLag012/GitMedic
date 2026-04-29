@@ -1,8 +1,10 @@
 import os
+from rich import print as rprint
+
 import uuid
 import git
 import shutil
-from llm import generate_patch
+from backend.llm import generate_patch
 
 class DeveloperAgent:
     def __init__(self, workspace_root):
@@ -33,7 +35,7 @@ class DeveloperAgent:
             try:
                 repo = git.Repo(work_dir)
                 if not is_retry:
-                    print(f"[DeveloperAgent] Resetting repository {work_dir} (New Plan)...")
+                    rprint(f"[bold cyan][DeveloperAgent][/bold cyan] Resetting repository {work_dir} (New Plan)...")
                     repo.git.reset("--hard")
                     repo.git.clean("-fd")
                     try:
@@ -45,22 +47,22 @@ class DeveloperAgent:
                             pass
                     repo.git.pull() 
                 else:
-                    print(f"[DeveloperAgent] Maintaining repository state for incremental retry in {work_dir}...")
+                    rprint(f"[bold cyan][DeveloperAgent][/bold cyan] Maintaining repository state for incremental retry in {work_dir}...")
             except Exception as e:
                 if not is_retry:
-                    print(f"[DeveloperAgent] Reset failed: {e}. Attempting removal...")
+                    rprint(f"[bold cyan][DeveloperAgent][/bold cyan] Reset failed: {e}. Attempting removal...")
                     try:
                         shutil.rmtree(work_dir, onerror=self._remove_readonly)
                     except:
                         work_dir = work_dir + "_retry"
                 else:
-                    print(f"[DeveloperAgent] WARNING: Error accessing repo during retry: {e}. Proceeding with caution.")
+                    rprint(f"[bold cyan][DeveloperAgent][/bold cyan] [bold yellow]WARNING:[/bold yellow] Error accessing repo during retry: {e}. Proceeding with caution.")
         
         if not repo:
             try:
                 repo = git.Repo.clone_from(repo_url, work_dir)
             except Exception as e:
-                print(f"[DeveloperAgent] Clone ERROR: {e}")
+                rprint(f"[bold cyan][DeveloperAgent][/bold cyan] Clone [bold red]ERROR:[/bold red] {e}")
                 return None
 
         branch_name = f"fix-bug-{issue['issue_id']}-{uuid.uuid4().hex[:6]}"
@@ -71,7 +73,7 @@ class DeveloperAgent:
         for fpath in files_to_modify:
             full_path = os.path.join(work_dir, fpath)
             if not os.path.exists(full_path):
-                print(f"[DeveloperAgent] WARNING: {fpath} does not exist.")
+                rprint(f"[bold cyan][DeveloperAgent][/bold cyan] [bold yellow]WARNING:[/bold yellow] {fpath} does not exist.")
                 continue
             
             with open(full_path, "r", encoding='utf-8') as f:
@@ -82,8 +84,8 @@ class DeveloperAgent:
             # ... SNIP (logic that sets patch_context)
             
             # GENERATION WITH CRITIC ADVICE
-            print(f"[DeveloperAgent] Generating patch for {fpath}...")
-            from llm import generate_patch
+            rprint(f"[bold cyan][DeveloperAgent][/bold cyan] Generating patch for {fpath}...")
+            from backend.llm import generate_patch
             
             new_content = None
             patch_error = None
@@ -105,19 +107,19 @@ class DeveloperAgent:
                     
                 if new_content.startswith("FORMAT_ERROR"):
                     patch_error = new_content
-                    print(f"[DeveloperAgent] {patch_error} (Attempt {p_attempt+1}/3)")
+                    rprint(f"[bold cyan][DeveloperAgent][/bold cyan] {patch_error} (Attempt {p_attempt+1}/3)")
                     new_content = None
                     continue
                     
                 if len(new_content) < len(content) * 0.1 and len(content) > 1000:
                     patch_error = "Output truncated."
-                    print(f"[DeveloperAgent] TRUNCATION Rejected. (Attempt {p_attempt+1}/3)")
+                    rprint(f"[bold cyan][DeveloperAgent][/bold cyan] TRUNCATION Rejected. (Attempt {p_attempt+1}/3)")
                     new_content = None
                     continue
                 
                 if new_content.strip() == content.strip():
                     patch_error = "New code identical to old code (null patch generated)."
-                    print(f"[DeveloperAgent] No modifications made. (Attempt {p_attempt+1}/3)")
+                    rprint(f"[bold cyan][DeveloperAgent][/bold cyan] No modifications made. (Attempt {p_attempt+1}/3)")
                     new_content = None
                     continue
                     
@@ -125,7 +127,7 @@ class DeveloperAgent:
                 break
                 
             if not new_content:
-                print(f"[DeveloperAgent] Abandoning {fpath} due to persistent patch format errors.")
+                rprint(f"[bold cyan][DeveloperAgent][/bold cyan] Abandoning {fpath} due to persistent patch format errors.")
                 continue
 
             with open(full_path, "w", encoding='utf-8') as f:
@@ -140,13 +142,13 @@ class DeveloperAgent:
         max_l = guardrails.get("max_lines", 2000)
 
         if len(modified_files) > max_f:
-            print(f"[DeveloperAgent] ERROR: Too many files modified ({len(modified_files)} > {max_f}).")
+            rprint(f"[bold cyan][DeveloperAgent][/bold cyan] [bold red]ERROR:[/bold red] Too many files modified ({len(modified_files)} > {max_f}).")
             return None
 
         try:
             stats = repo.git.diff("--shortstat")
             # Example output: " 1 file changed, 15 insertions(+), 5 deletions(-)"
-            print(f"[DeveloperAgent] Modification statistics: {stats.strip()}")
+            rprint(f"[bold cyan][DeveloperAgent][/bold cyan] Modification statistics: {stats.strip()}")
             
             # A raw but effective calculation to sum changes
             total_changes = 0
@@ -156,10 +158,10 @@ class DeveloperAgent:
                 total_changes = sum(int(n) for n in numbers[1:]) # Skips the number of files
             
             if total_changes > max_l:
-                print(f"[DeveloperAgent] ERROR: Too many modifications ({total_changes} > {max_l}).")
+                rprint(f"[bold cyan][DeveloperAgent][/bold cyan] [bold red]ERROR:[/bold red] Too many modifications ({total_changes} > {max_l}).")
                 return None
         except Exception as e:
-            print(f"[DeveloperAgent] WARNING: Unable to calculate diff statistics: {e}")
+            rprint(f"[bold cyan][DeveloperAgent][/bold cyan] [bold yellow]WARNING:[/bold yellow] Unable to calculate diff statistics: {e}")
 
         repo.git.add(".")
         repo.index.commit(f"AutoDevAgent: fix for issue #{issue['issue_id']}")

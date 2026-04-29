@@ -4,10 +4,10 @@ from datetime import datetime
 from github import Github
 
 # Import specialized agents
-from agents.discovery_agent import DiscoveryAgent
-from agents.planner_agent import PlannerAgent
-from agents.developer_agent import DeveloperAgent
-from agents.verifier_agent import VerifierAgent
+from backend.agents.discovery_agent import DiscoveryAgent
+from backend.agents.planner_agent import PlannerAgent
+from backend.agents.developer_agent import DeveloperAgent
+from backend.agents.verifier_agent import VerifierAgent
 
 from rich.console import Console
 from rich.table import Table
@@ -78,7 +78,7 @@ class GitMedicOrchestrator:
         table.add_row("Lines Modified", str(self.metrics['total_lines_modified']))
         table.add_row("Execution Time", f"{elapsed:.2f}s")
         
-        console.print(Panel(table, border_style="blue", padding=(1, 2)))
+        console.rprint(Panel(table, border_style="blue", padding=(1, 2)))
 
     def run(self, target_url=None, discovery_mode=False):
         if not discovery_mode:
@@ -108,7 +108,7 @@ class GitMedicOrchestrator:
             time.sleep(2)
 
     def _run_once(self, target_url=None, discovery_mode=False):
-        from llm import get_provider, check_ollama, start_ollama
+        from backend.llm import get_provider, check_ollama, start_ollama
         provider = get_provider()
         
         rprint("\n[bold cyan]=== GitMedic Multi-Agent System Started ===[/bold cyan]\n")
@@ -156,7 +156,7 @@ class GitMedicOrchestrator:
         # Pre-clone or check existing to get file structure for the Planner
         work_dir = os.path.join(self.base_dir, "repos", f"issue_{issue['issue_id']}")
         if not os.path.exists(work_dir):
-            rprint(f"[bold yellow][Orchestrator][/bold yellow] Downloading repository structure for Planner...")
+            rprint(f"[bold blue][Orchestrator][/bold blue] Downloading repository structure for Planner...")
             # Use a dummy plan to trigger cloning
             self.developer_agent.implement_fix(issue, {"plan": "PRE-CLONE", "files_to_modify": []})
         
@@ -164,7 +164,7 @@ class GitMedicOrchestrator:
         issue["file_list"] = file_list
         
         # 2. PLANNING (Swarm Mode - Parallel Execution)
-        rprint("[bold blue][Orchestrator][/bold blue] Starting Swarm Planning: Generating parallel strategies...")
+        rprint("[bold blue][bold blue][Orchestrator][/bold blue][/bold blue] Starting Swarm Planning: Generating parallel strategies...")
         from concurrent.futures import ThreadPoolExecutor
         
         nudges = [
@@ -184,7 +184,7 @@ class GitMedicOrchestrator:
         candidate_plans.sort(key=lambda x: x.get("estimated_lines", 999))
         plan = candidate_plans[0]
         
-        rprint(f"[bold blue][Orchestrator][/bold blue] Swarm Selection: Choosing most efficient strategy ({plan.get('estimated_lines', 'N/A')} lines).")
+        rprint(f"[bold blue][bold blue][Orchestrator][/bold blue][/bold blue] Swarm Selection: Choosing most efficient strategy ({plan.get('estimated_lines', 'N/A')} lines).")
         
         # --- PLAN VALIDATION (Anti-Hallucination) ---
         valid_files = []
@@ -194,26 +194,26 @@ class GitMedicOrchestrator:
                 valid_files.append(f)
             else:
                 hallucinated = True
-                print(f"[Orchestrator] WARNING: Hallucinated file path detected: {f}. Attempting correction...")
+                rprint(f"[bold blue][Orchestrator][/bold blue] [bold yellow]WARNING:[/bold yellow] Hallucinated file path detected: {f}. Attempting correction...")
                 # Search for file with identical basename in the real file_list
                 base_name = os.path.basename(f)
                 matches = [rf for rf in issue.get("file_list", []) if os.path.basename(rf) == base_name]
                 if matches:
-                    print(f"[Orchestrator] Automatic correction: {f} -> {matches[0]}")
+                    rprint(f"[bold blue][Orchestrator][/bold blue] Automatic correction: {f} -> {matches[0]}")
                     valid_files.append(matches[0])
                 else:
-                    print(f"[Orchestrator] Unable to find match for {f}.")
+                    rprint(f"[bold blue][Orchestrator][/bold blue] Unable to find match for {f}.")
         
         if hallucinated:
             plan["files_to_modify"] = valid_files
             if not valid_files:
-                print("[Orchestrator] ERROR: No files in the plan actually exist. Failure.")
+                rprint("[bold blue][Orchestrator][/bold blue] [bold red]ERROR:[/bold red] No files in the plan actually exist. Failure.")
                 return False
 
         self.log_action("planning", "PlannerAgent", "Plan validated & corrected", plan.get("rationale"))
         
         # 3. EXECUTION & VERIFICATION (with Multi-Plan Fallback & "Critic" Loop)
-        rprint(f"[bold blue][Orchestrator][/bold blue] Beginning execution phase on {len(candidate_plans)} candidate plans.")
+        rprint(f"[bold blue][bold blue][Orchestrator][/bold blue][/bold blue] Beginning execution phase on {len(candidate_plans)} candidate plans.")
         
         execution_data = None
         global_failures = [] # For the Planner if Deep Retry is needed
@@ -249,37 +249,37 @@ class GitMedicOrchestrator:
                     cumulative_feedback.append(err)
                     
                     if app_fail_streak >= 3:
-                        print("[Orchestrator] Too many consecutive patch formatting errors. Abandoning this plan.")
+                        rprint("[bold blue][Orchestrator][/bold blue] Too many consecutive patch formatting errors. Abandoning this plan.")
                         break 
                         
-                    critic_advice = "CRITICAL WARNING: The previous patch format was invalid and could not be applied. Ensure your <search> block EXACTLY matches the file content."
+                    critic_advice = "CRITICAL [bold yellow]WARNING:[/bold yellow] The previous patch format was invalid and could not be applied. Ensure your <search> block EXACTLY matches the file content."
                     continue
                 else:
                     app_fail_streak = 0
                     
                 verified, error_msg = self.verifier_agent.verify(execution_data, issue)
                 if verified:
-                    print(f"[Orchestrator] FINAL SUCCESS: Plan #{plan_idx+1} resolved at attempt {attempt}!")
+                    rprint(f"[bold blue][Orchestrator][/bold blue] FINAL SUCCESS: Plan #{plan_idx+1} resolved at attempt {attempt}!")
                     self.log_action("execution", "DeveloperAgent", f"Success with Plan {plan_idx+1}")
                     break
                 else:
                     # Call to CRITIC to understand what to modify
-                    from llm import analyze_failure
+                    from backend.llm import analyze_failure
                     last_code = ""
                     if execution_data.get("modified_files"):
                         with open(execution_data["modified_files"][0], "r", encoding='utf-8') as f:
                             last_code = f.read()
                     
-                    print(f"[Orchestrator] Logical/Syntax failure at attempt {attempt}. Consulting Critic...")
+                    rprint(f"[bold blue][Orchestrator][/bold blue] Logical/Syntax failure at attempt {attempt}. Consulting Critic...")
                     current_critic_advice = analyze_failure(last_code, error_output=error_msg)
                     
                     # Stagnation detection (same analysis repeated)
                     if critic_advice and current_critic_advice.strip() == critic_advice.strip():
-                        print("[Orchestrator] WARNING: Critic is repeating identical advice. Shifting correction strategy...")
+                        rprint("[bold blue][Orchestrator][/bold blue] [bold yellow]WARNING:[/bold yellow] Critic is repeating identical advice. Shifting correction strategy...")
                         current_critic_advice += "\n\nCRITICAL DIRECTIVE: Your previous attempt based on this advice still FAILED. You MUST try a completely different approach!"
                     
                     critic_advice = current_critic_advice
-                    print(f"[Critic] Analysis for the next cycle: {critic_advice}")
+                    rprint(f"[bold cyan][Critic][/bold cyan] Analysis for the next cycle: {critic_advice}")
 
                     err = f"Attempt {attempt} verification failed:\n{error_msg}"
                     cumulative_feedback.append(err)
@@ -291,28 +291,28 @@ class GitMedicOrchestrator:
             if verified:
                 break
             else:
-                print(f"[Orchestrator] Plan #{plan_idx+1} abandoned after {attempt} unsuccesful attempts.")
+                rprint(f"[bold blue][Orchestrator][/bold blue] Plan #{plan_idx+1} abandoned after {attempt} unsuccesful attempts.")
 
         # DEEP RETRY: If everything fails, try re-planning with historical data
         if not execution_data:
-            print("\n[Orchestrator] DEEP RETRY PHASE: All initial plans failed. Reconstructing strategy...")
-            from llm import analyze_and_plan
+            rprint("\n[bold blue][Orchestrator][/bold blue] DEEP RETRY PHASE: All initial plans failed. Reconstructing strategy...")
+            from backend.llm import analyze_and_plan
             past_errs = "\n".join(global_failures[-5:]) # Last 5 errors
             new_plan = analyze_and_plan(issue, nudge="PERFORM A COMPLETE RESET. Analyze past errors and propose a completely different solution.", past_failures=past_errs)
             
             if new_plan:
-                print(f"[Orchestrator] New emergency plan generated. Final attempt...")
+                rprint(f"[bold blue][Orchestrator][/bold blue] New emergency plan generated. Final attempt...")
                 # ... could implement recursion or final loop, executing single attempt for now
                 execution_data = self.developer_agent.implement_fix(issue, new_plan, retry_feedback=past_errs)
                 if execution_data:
                     verified, _ = self.verifier_agent.verify(execution_data, issue)
                     if verified:
-                        print("[Orchestrator] DEEP RETRY SUCCESSFUL!")
+                        rprint("[bold blue][Orchestrator][/bold blue] DEEP RETRY SUCCESSFUL!")
                     else:
                         execution_data = None
 
         if not execution_data:
-            print("[Orchestrator] ERROR: All plans and attempts have failed.")
+            rprint("[bold blue][Orchestrator][/bold blue] [bold red]ERROR:[/bold red] All plans and attempts have failed.")
             self._generate_failure_report(issue, candidate_plans[0], "All plans failed")
             return False
         
@@ -325,16 +325,16 @@ class GitMedicOrchestrator:
         return True
 
     def submit_pr(self, issue, execution_data):
-        print("\n--- SUBMIT ---")
+        rprint("\n--- SUBMIT ---")
         if os.getenv("SKIP_SUBMIT", "false").lower() == "true":
-            print("[Orchestrator] SKIP_SUBMIT=true: Bypassing Pull Request creation.")
+            rprint("[bold blue][Orchestrator][/bold blue] SKIP_SUBMIT=true: Bypassing Pull Request creation.")
             return
 
         repo_obj = execution_data.get("repo_obj")
         branch_name = execution_data.get("branch_name")
         
         try:
-            print(f"[Orchestrator] Pushing branch {branch_name}...")
+            rprint(f"[bold blue][Orchestrator][/bold blue] Pushing branch {branch_name}...")
             repo_obj.git.push("origin", branch_name)
             
             token = os.getenv("GITHUB_TOKEN")
@@ -347,10 +347,10 @@ class GitMedicOrchestrator:
                 head=branch_name,
                 base=github_repo.default_branch
             )
-            print(f"[Orchestrator] PR Created: {pr.html_url}")
+            rprint(f"[bold blue][Orchestrator][/bold blue] PR Created: {pr.html_url}")
             self.log_action("submission", "Orchestrator", f"PR Created: {pr.html_url}")
         except Exception as e:
-            print(f"[Orchestrator] PR ERROR: {e}")
+            rprint(f"[bold blue][Orchestrator][/bold blue] PR [bold red]ERROR:[/bold red] {e}")
             self.log_action("submission", "Orchestrator", "Failed to create PR", str(e))
 
     def _generate_failure_report(self, issue, plan, error):
@@ -364,4 +364,4 @@ class GitMedicOrchestrator:
         }
         with open(report_path, "w", encoding='utf-8') as f:
             json.dump(report, f, indent=2)
-        print(f"[Orchestrator] Failure report generated: {report_path}")
+        rprint(f"[bold blue][Orchestrator][/bold blue] Failure report generated: {report_path}")

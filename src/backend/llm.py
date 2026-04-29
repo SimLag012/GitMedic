@@ -1,7 +1,12 @@
 import os
+from rich import print as rprint
+from rich.console import Console
+
+console = Console()
+
 import json
 import requests
-from config import setup_config
+from backend.config import setup_config
 
 setup_config()
 
@@ -16,16 +21,52 @@ def ask_gemini(prompt):
     import google.generativeai as genai
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        print("GEMINI_API_KEY not found.")
+        rprint("[bold purple][GEMINI LOG][/bold purple] [bold red]ERROR:[/bold red] GEMINI_API_KEY not found in environment.")
         return None
+    
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-1.5-pro")
-    try:
-        response = model.generate_content(prompt)
-        return response.text
-    except Exception as e:
-        print("Gemini Error:", e)
-        return None
+    
+    # Discovery has shown that this account has access to models like 2.0 and 2.5.
+    # Trying the most modern ones available in the list.
+    for model_name in ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash", "gemini-pro"]:
+        try:
+            with console.status(f"[bold purple][GEMINI LOG][/bold purple] Requesting {model_name}..."):
+                # Note: The library adds 'models/' prefix automatically if missing
+                model = genai.GenerativeModel(model_name)
+                response = model.generate_content(prompt)
+            
+            # Check if the response was blocked by safety filters
+            if hasattr(response, 'candidates') and response.candidates:
+                if response.candidates[0].finish_reason == 3: # 3 is SAFETY
+                    rprint(f"[bold purple][GEMINI LOG][/bold purple] [bold red]ERROR:[/bold red] Content generation blocked by safety filters (model: {model_name}).")
+                    return None
+                return response.text
+            else:
+                # Maybe it blocked before generating candidates
+                if hasattr(response, 'prompt_feedback') and response.prompt_feedback:
+                     rprint(f"[bold purple][GEMINI LOG][/bold purple] [bold red]ERROR:[/bold red] Prompt feedback for {model_name}: {response.prompt_feedback}")
+                continue # Try next model
+        except Exception as e:
+            if "429" in str(e):
+                import time
+                rprint(f"[bold purple][GEMINI LOG][/bold purple] Quota exceeded (429) for {model_name}. Waiting 60 seconds to retry...")
+                time.sleep(60)
+                try:
+                    # Retry once after waiting
+                    response = model.generate_content(prompt)
+                    if hasattr(response, 'candidates') and response.candidates:
+                        return response.text
+                except Exception as retry_e:
+                    rprint(f"[bold purple][GEMINI LOG][/bold purple] Retry failed for {model_name}: {str(retry_e)}")
+                continue # Try next model or fail
+            if "404" in str(e):
+                # Silent skip for 404 to try next model
+                continue
+            rprint(f"[bold purple][GEMINI LOG][/bold purple] ERROR during Gemini {model_name} call: {str(e)}")
+            return None
+    
+    rprint("[bold purple][GEMINI LOG][/bold purple] CRITICAL [bold red]ERROR:[/bold red] All Gemini models (flash and pro) returned 404 or failed.")
+    return None
 
 def start_ollama():
     """
@@ -35,7 +76,7 @@ def start_ollama():
     import time
     try:
         # Start ollama serve in background (Windows compatibility)
-        print("[LLM LOG] Attempting automatic startup of 'ollama serve' via CMD...")
+        rprint("[bold purple][LLM LOG][/bold purple] Attempting automatic startup of 'ollama serve' via CMD...")
         subprocess.Popen("ollama serve", 
                          shell=True,
                          stdout=subprocess.DEVNULL, 
@@ -76,27 +117,28 @@ def ask_ollama(prompt):
         # Preemptive Ollama status check
         is_running, status_msg = check_ollama()
         if not is_running:
-            print(f"[LLM LOG] ERROR: {status_msg}")
+            rprint(f"[bold purple][LLM LOG][/bold purple] [bold red]ERROR:[/bold red] {status_msg}")
             return None
 
-        print(f"[LLM LOG] Sending request to Ollama (model: {model_name})...")
+        rprint(f"[bold purple][LLM LOG][/bold purple] Sending request to Ollama (model: {model_name})...")
         start_time = time.time()
         
-        response = ollama.chat(
-            model=model_name,
-            messages=[{"role": "user", "content": prompt}]
-        )
+        with console.status(f"[bold purple][LLM LOG][/bold purple] Generating with Ollama {model_name}..."):
+            response = ollama.chat(
+                model=model_name,
+                messages=[{"role": "user", "content": prompt}]
+            )
         
         elapsed = time.time() - start_time
-        print(f"[LLM LOG] Response received from Ollama in {elapsed:.2f} seconds.")
+        rprint(f"[bold purple][LLM LOG][/bold purple] Response received from Ollama in {elapsed:.2f} seconds.")
         return response["message"]["content"]
     except Exception as e:
-        print("[LLM LOG] Critical error during Ollama execution:", e)
+        rprint("[bold purple][LLM LOG][/bold purple] Critical error during Ollama execution:", e)
         return None
 
 def ask_llm(prompt):
     provider = get_provider()
-    # print(f"Using provider: {provider}") # Too verbose
+    # rprint(f"Using provider: {provider}") # Too verbose
     if provider == "ollama":
         return ask_ollama(prompt)
     else:
@@ -107,7 +149,7 @@ def analyze_and_plan(issue_details, codebase_context="", nudge="", past_failures
     Analyzes the issue and plans the fix. Learns from past failures if provided.
     """
     file_list_str = "\n".join(issue_details.get("file_list", []))
-    failure_context = f"\nWARNING: The following attempts have FAILED. Analyze them to PREVENT identical errors:\n{past_failures}" if past_failures else ""
+    failure_context = f"\n[bold yellow]WARNING:[/bold yellow] The following attempts have FAILED. Analyze them to PREVENT identical errors:\n{past_failures}" if past_failures else ""
     
     prompt = f"""
     You are the Lead Engineer (Planner Agent) for an AI development team.
@@ -200,7 +242,7 @@ def generate_patch(file_content, plan, feedback=None, context_snippet=None, crit
     # Extra instruction for deep refinement
     persistence_directive = ""
     if feedback and feedback.count("Attempt") >= 3:
-        persistence_directive = "\nWARNING: Multiple attempts have failed. Do NOT repeat the same logic. Think out of the box and try a DIFFERENT technical approach to solve the issue once and for all.\n"
+        persistence_directive = "\n[bold yellow]WARNING:[/bold yellow] Multiple attempts have failed. Do NOT repeat the same logic. Think out of the box and try a DIFFERENT technical approach to solve the issue once and for all.\n"
     
     # Extra instruction for syntax errors
     syntax_fix_directive = ""
@@ -283,10 +325,10 @@ def generate_patch(file_content, plan, feedback=None, context_snippet=None, crit
                             matched = True
                             break
                     if not matched:
-                        return f"FORMAT_ERROR: The <search> block '{st[:50]}...' was not found in the original file. Use exact copy-paste!"
+                        return f"FORMAT_[bold red]ERROR:[/bold red] The <search> block '{st[:50]}...' was not found in the original file. Use exact copy-paste!"
             return new_code
         except Exception as e:
-            return f"FORMAT_ERROR: Parsing of <search>/<replace> tags failed ({e})."
+            return f"FORMAT_[bold red]ERROR:[/bold red] Parsing of <search>/<replace> tags failed ({e})."
     
     # Standard Full File Return
     if "```python" in response:

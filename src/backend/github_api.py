@@ -1,6 +1,8 @@
 import os
+from rich import print as rprint
+
 from github import Github
-from config import setup_config
+from backend.config import setup_config
 
 setup_config()
 
@@ -11,7 +13,7 @@ def search_issues():
     """
     token = os.getenv("GITHUB_TOKEN")
     if not token:
-        print("GITHUB_TOKEN not found.")
+        rprint("GITHUB_TOKEN not found.")
         return None
         
     g = Github(token)
@@ -21,7 +23,7 @@ def search_issues():
     issues = g.search_issues(query)
     
     if issues.totalCount == 0:
-        print("No issues found.")
+        rprint("No issues found.")
         return None
         
     # Take the first available issue

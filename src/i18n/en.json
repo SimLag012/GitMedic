@@ -1,0 +1,10 @@
+{
+  "locale": "en",
+  "strings": {
+    "app_title":    "GitMedic Multi-Agent System",
+    "lbl_provider": "LLM Provider",
+    "lbl_token":    "GitHub Token",
+    "msg_success":  "Fix applied successfully.",
+    "msg_failure":  "All plans failed."
+  }
+}
